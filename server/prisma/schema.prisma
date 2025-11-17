@@ -1,0 +1,114 @@
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS for status and condition
+enum BookCondition {
+  LIKE_NEW
+  GOOD
+  FAIR
+  POOR
+}
+
+enum BookStatus {
+  AVAILABLE
+  REQUESTED
+  BORROWED
+  UNAVAILABLE // For soft deletes
+}
+
+enum TransactionStatus {
+  REQUESTED
+  BORROWED
+  RETURNED
+  REJECTED
+  EXPIRED
+}
+
+// MODELS
+
+model User {
+  id                    String        @id @default(cuid()) // CUID is a great default for unique IDs
+  googleId              String        @unique
+  email                 String        @unique
+  fullName              String
+  profilePicture        String?
+  phone                 String        @unique
+  emailDomain           String
+  hasListedFirstBook    Boolean       @default(false)
+  badges                String[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relations
+  books                 Book[]
+  listedTransactions    Transaction[] @relation("lender")
+  borrowedTransactions  Transaction[] @relation("borrower")
+  addedDomains          AllowedDomain[]
+}
+
+model Book {
+  id                   String          @id @default(cuid())
+  ownerId              String
+  title                String
+  author               String
+  coverImage           String?
+  isbn                 String?
+  description          String?
+  condition            BookCondition
+  expectedDurationDays Int
+  status               BookStatus      @default(AVAILABLE)
+  currentBorrowerId    String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // Relations
+  owner                User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  transactions         Transaction[]
+}
+
+model Transaction {
+  id                        String            @id @default(cuid())
+  bookId                    String
+  lenderId                  String
+  borrowerId                String
+  status                    TransactionStatus @default(REQUESTED)
+  requestDate               DateTime          @default(now())
+  acceptDate                DateTime?
+  rejectDate                DateTime?
+  exchangeConfirmedByLender Boolean           @default(false)
+  exchangeConfirmedByBorrower Boolean         @default(false)
+  exchangeDate              DateTime?
+  expectedReturnDate        DateTime?
+  actualReturnDate          DateTime?
+  returnConfirmedByLender   Boolean           @default(false)
+  autoConfirmedReturn       Boolean           @default(false)
+  reported                  Boolean           @default(false)
+  reportReason              String?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+
+  // Relations
+  book                      Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  lender                    User              @relation("lender", fields: [lenderId], references: [id], onDelete: Cascade)
+  borrower                  User              @relation("borrower", fields: [borrowerId], references: [id], onDelete: Cascade)
+}
+
+model AllowedDomain {
+  id        String   @id @default(cuid())
+  domain    String   @unique
+  addedById String
+  createdAt DateTime @default(now())
+
+  // Relations
+  addedBy   User     @relation(fields: [addedById], references: [id])
+}
