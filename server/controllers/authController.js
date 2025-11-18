@@ -1,18 +1,18 @@
 // server/controllers/authController.js
 
-const { initializeApp, cert } = require('firebase-admin/app');
+const { initializeApp, cert , getApps} = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db'); // Our Prisma client instance
+const serviceAccount = require('../firebase-service-account-key.json');
 
 // Initialize Firebase Admin SDK
-// IMPORTANT: We will set up the service account key later.
-// For now, this setup allows local development.
-initializeApp({
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-});
+// Check if the app is already initialized to prevent errors during hot-reloads
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount),
+  });
+}
 
 // The list of allowed domains
 const ALLOWED_DOMAINS = ['@vitbhopal.ac.in'];
